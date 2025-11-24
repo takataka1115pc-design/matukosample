@@ -12,10 +12,67 @@
     <!-- Babel (for JSX) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
+    <!-- Google Fonts: Share Tech Mono (7セグ/デジタル時計風フォント) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
     <style>
         /* カスタムスクロールバーなどの追加スタイルが必要な場合はここに記述 */
         body {
             font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            overflow-x: hidden; /* 横スクロール防止 */
+        }
+
+        /* 7セグ風フォントクラス */
+        .font-digital {
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        /* ロゴのふわふわアニメーション */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+        .animate-float {
+            animation: float 4s ease-in-out infinite;
+        }
+
+        /* 背景バブルのアニメーション */
+        .bubbles-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* コンテンツの後ろに配置 */
+            overflow: hidden;
+            pointer-events: none; /* クリックを阻害しない */
+        }
+        
+        .bubble {
+            position: absolute;
+            bottom: -100px;
+            background-color: rgba(147, 197, 253, 0.2); /* 薄い青色 */
+            border-radius: 50%;
+            opacity: 0.6;
+            animation: rise infinite ease-in;
+        }
+
+        @keyframes rise {
+            0% {
+                bottom: -100px;
+                transform: translateX(0);
+            }
+            50% {
+                transform: translateX(40px);
+            }
+            100% {
+                bottom: 120%; /* 画面上部外まで移動 */
+                transform: translateX(-40px);
+                opacity: 0;
+            }
         }
     </style>
 </head>
@@ -82,6 +139,38 @@
         );
 
         // --- Components ---
+
+        // 背景バブルコンポーネント
+        const BackgroundBubbles = () => {
+            // バブルの生成設定
+            const bubbleCount = 15;
+            const bubbles = Array.from({ length: bubbleCount }).map((_, i) => {
+                const size = Math.random() * 60 + 20; // 20px - 80px
+                const left = Math.random() * 100; // 0% - 100%
+                const duration = Math.random() * 15 + 10; // 10s - 25s
+                const delay = Math.random() * 10; // 0s - 10s
+                
+                return (
+                    <div
+                        key={i}
+                        className="bubble"
+                        style={{
+                            width: `${size}px`,
+                            height: `${size}px`,
+                            left: `${left}%`,
+                            animationDuration: `${duration}s`,
+                            animationDelay: `${delay}s`
+                        }}
+                    />
+                );
+            });
+
+            return (
+                <div className="bubbles-container">
+                    {bubbles}
+                </div>
+            );
+        };
 
         const ChimeCard = ({ description, locationTitle, url }) => {
             // YouTubeのURLからIDを抽出する関数（改善版）
@@ -243,7 +332,7 @@
                 {
                     desc: "",
                     title: "群馬県利根郡片品村 12時「夏の思い出」",
-                    url: "https://youtu.be/Hilm4gcbq9Y?si=tRrLltrc6FovN2OA"
+                    url: "https://youtu.be/PXNXaXlF0lc?si=V29Br2MKSr0Q3Csa"
                 },
                 {
                     desc: "",
@@ -258,7 +347,7 @@
                 {
                     desc: "",
                     title: "群馬県高崎市吉井町 21時「家路」",
-                    url: "https://youtu.be/eVikV5EKkZI?si=PolYfVWPYc-CWQwy"
+                    url: "https://youtu.be/TC9KdeOFyn8?si=CSsnO4x_llTvrOR8"
                 }
             ];
 
@@ -276,28 +365,71 @@
             ];
 
             return (
-                <div className="min-h-screen bg-blue-50 font-sans text-gray-800">
+                <div className="min-h-screen bg-blue-50 font-sans text-gray-800 relative">
+                    {/* 背景バブル */}
+                    <BackgroundBubbles />
+
                     {/* Header removed */}
 
                     {/* Hero / Intro */}
-                    <div className="max-w-3xl mx-auto px-4 py-10">
-                        <div className="bg-white rounded-2xl p-8 shadow-sm border border-blue-100 mb-10 text-center">
-                            {/* トップロゴの追加: ユーザー指定の画像URLを使用 */}
+                    <div className="max-w-3xl mx-auto px-4 py-10 relative z-10">
+                        {/* トップロゴ: サイズを大きくし、ふわふわアニメーション適用 */}
+                        <div className="text-center mb-8">
                             <img 
                                 src="https://media.discordapp.net/attachments/817790566184124456/1442346689221496922/toplogo.png?ex=69251988&is=6923c808&hm=8d77aee80bd78ca66082aec33200b45e2b328fbbdb0bcbb28ede047c614961b6&=&format=webp&quality=lossless&width=1515&height=471" 
                                 alt="防災無線チャイムの世界 トップロゴ" 
-                                className="mx-auto mb-8 max-w-full h-auto hover:scale-105 transition-transform duration-300"
-                                style={{ maxHeight: '120px' }}
+                                className="mx-auto max-w-full h-auto animate-float"
+                                style={{ maxHeight: '200px' }} 
                             />
+                        </div>
 
-                            <p className="text-xl md:text-2xl leading-relaxed mb-6 font-bold text-gray-800">
+                        {/* 紹介文: 座布団の中（ロゴは除外）、フォントを少し太く調整(medium) */}
+                        <div className="bg-white rounded-2xl p-8 shadow-sm border border-blue-100 mb-10 text-center">
+                            <p className="text-lg md:text-xl leading-relaxed mb-6 font-medium text-gray-800">
                                 こんにちは、防災無線チャイムの世界です。<br />
-                                先日放送された、マツコの知らない世界はご覧になりましたか？
+                                １１月２５日に放送された、マツコの知らない世界はご覧になりましたか？
                             </p>
-                            <p className="text-xl md:text-2xl leading-relaxed font-bold text-blue-600">
+                            <p className="text-lg md:text-xl leading-relaxed font-medium text-blue-600">
                                 今回は番組内で登場したチャイムについて紹介していきます！<br/>
                                 もしかしたらあなたのきいたことのあるチャイムが見つかるかも！！
                             </p>
+                        </div>
+
+                        {/* 放送詳細リンク (サムネイル埋め込み風) */}
+                        <div className="mb-10 px-4">
+                            <a 
+                                href="https://www.tbs.co.jp/matsuko-sekai/archive/202511182/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block max-w-2xl mx-auto bg-white rounded-xl border border-blue-100 shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group"
+                            >
+                                <div className="flex flex-col sm:flex-row h-auto sm:h-40">
+                                    {/* サムネイル画像エリア: スクリーンショットAPIを使用 */}
+                                    <div className="w-full sm:w-2/5 bg-slate-100 relative overflow-hidden flex items-center justify-center h-48 sm:h-full">
+                                        <img 
+                                            src="https://s.wordpress.com/mshots/v1/https%3A%2F%2Fwww.tbs.co.jp%2Fmatsuko-sekai%2Farchive%2F202511182%2F?w=640&h=360" 
+                                            alt="マツコの知らない世界 防災無線チャイムの世界" 
+                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                        />
+                                    </div>
+                                    
+                                    {/* テキストエリア */}
+                                    <div className="w-full sm:w-3/5 p-4 sm:p-6 flex flex-col justify-center text-left bg-white/90">
+                                        <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                                            放送詳細はこちら
+                                        </h3>
+                                        <p className="text-xs sm:text-sm text-gray-500 line-clamp-2 mb-2">
+                                            TBSテレビ「マツコの知らない世界」
+                                            <br className="hidden sm:inline" />
+                                            防災無線チャイムの世界（2025年11月18日放送）
+                                        </p>
+                                        <div className="flex items-center text-[10px] sm:text-xs text-gray-400 mt-auto">
+                                            <span className="truncate">www.tbs.co.jp</span>
+                                            <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
                         </div>
 
                         {/* Section 1: Introduction */}
@@ -357,6 +489,23 @@
                                 「近くに珍しいチャイムとかあるのかな？」など気になったことがあればぜひご覧ください。
                             </p>
                             
+                            {/* 追加: 鳴動表一覧へのリンク（画像に変更） */}
+                            <div className="mb-10 text-center">
+                                <a 
+                                    href="https://radiotower.theblog.me/pages/3539642/meidouhyou"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-block transition-transform duration-300 hover:scale-105 hover:opacity-90"
+                                >
+                                    <img 
+                                        src="https://cdn.discordapp.com/attachments/1272916264414613626/1442351989517193276/IMG_1163.png?ex=69251e77&is=6923ccf7&hm=bc2d3344d1e221e1eeae92a01a90afa1d499a5428c2d9402bdb5ba77a3786142&" 
+                                        alt="防災無線の鳴動表一覧を見る" 
+                                        className="max-w-full h-auto rounded-lg shadow-md mx-auto"
+                                        style={{ maxHeight: '150px' }}
+                                    />
+                                </a>
+                            </div>
+
                             <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
                                 <h4 className="font-bold mb-3 flex items-center gap-2">
                                     <Mail className="w-5 h-5 text-gray-500" />
@@ -382,7 +531,7 @@
                         </div>
                     </div>
                     
-                    <footer className="bg-gray-800 text-gray-300 py-6 mt-12 text-center text-sm">
+                    <footer className="bg-gray-800 text-gray-300 py-6 mt-12 text-center text-sm relative z-10">
                         <p>&copy; 2024 防災無線チャイムの世界</p>
                     </footer>
                 </div>
