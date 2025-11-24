@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>防災無線チャイムの世界</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel (for JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        /* カスタムスクロールバーなどの追加スタイルが必要な場合はここに記述 */
+        body {
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // --- Icons (Lucide Reactの代わりとなるSVGコンポーネント) ---
+        const IconBase = ({ children, className }) => (
+            <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="24" 
+                height="24" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className={className}
+            >
+                {children}
+            </svg>
+        );
+
+        const Music = ({ className }) => (
+            <IconBase className={className}>
+                <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+            </IconBase>
+        );
+
+        const Radio = ({ className }) => (
+            <IconBase className={className}>
+                <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9" />
+                <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5" />
+                <circle cx="12" cy="12" r="2" />
+                <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5" />
+                <path d="M19.1 4.9C23 8.8 23 15.1 19.1 19" />
+            </IconBase>
+        );
+
+        const MapPin = ({ className }) => (
+            <IconBase className={className}>
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" />
+            </IconBase>
+        );
+
+        const Info = ({ className }) => (
+            <IconBase className={className}>
+                <circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" />
+            </IconBase>
+        );
+
+        const Mail = ({ className }) => (
+            <IconBase className={className}>
+                <rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+            </IconBase>
+        );
+
+        const Heart = ({ className }) => (
+            <IconBase className={className}>
+                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5 4.5 1.5l-2.5 1-2.5-1C7.5 3.5 6 3 4.5 3A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+            </IconBase>
+        );
+
+        // --- Components ---
+
+        const ChimeCard = ({ description, locationTitle, url }) => {
+            // YouTubeのURLからIDを抽出する関数（改善版）
+            const getVideoId = (url) => {
+                if (!url) return null;
+                const cleanUrl = url.trim(); // URLの前後の空白を削除
+                let videoId = null;
+
+                try {
+                    // URLオブジェクトでの解析を試みる（より確実）
+                    const urlObj = new URL(cleanUrl);
+                    
+                    if (urlObj.hostname.includes('youtube.com')) {
+                        // youtube.com/watch?v=xxxxx 形式
+                        videoId = urlObj.searchParams.get('v');
+                        // youtube.com/embed/xxxxx 形式
+                        if (!videoId && urlObj.pathname.startsWith('/embed/')) {
+                            videoId = urlObj.pathname.split('/')[2];
+                        }
+                    } else if (urlObj.hostname.includes('youtu.be')) {
+                        // youtu.be/xxxxx 形式
+                        videoId = urlObj.pathname.slice(1);
+                    }
+                } catch (e) {
+                    // URLパース失敗時は何もしない（正規表現へ）
+                }
+
+                // 正規表現での解析（フォールバック）
+                if (!videoId) {
+                    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+                    const match = cleanUrl.match(regExp);
+                    if (match && match[2]) {
+                        videoId = match[2];
+                    }
+                }
+                
+                // IDのクリーニング
+                return videoId ? videoId.trim() : null;
+            };
+
+            const videoId = getVideoId(url);
+
+            return (
+                <div className="bg-white rounded-xl shadow-md overflow-hidden mb-8 border border-gray-100 hover:shadow-lg transition-shadow duration-300">
+                    <div className="p-6">
+                        {description && (
+                            <p className="text-gray-800 mb-3 text-lg font-medium leading-relaxed border-l-4 border-orange-400 pl-3">
+                                {description}
+                            </p>
+                        )}
+                        <h3 className="font-bold text-sm text-gray-500 mb-4 flex items-start gap-2">
+                            <MapPin className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                            {locationTitle}
+                        </h3>
+                        
+                        {videoId ? (
+                            <div className="relative w-full aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                                <iframe
+                                    className="absolute top-0 left-0 w-full h-full"
+                                    src={`https://www.youtube.com/embed/${videoId}`}
+                                    title={locationTitle}
+                                    frameBorder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                ></iframe>
+                            </div>
+                        ) : (
+                            <div className="bg-gray-100 p-4 rounded text-center text-gray-500">
+                                動画を読み込めませんでした（URLが無効の可能性があります）
+                            </div>
+                        )}
+                        <div className="mt-2 text-right">
+                            <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">
+                                YouTubeで見る &rarr;
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const SectionHeader = ({ title, icon: Icon }) => (
+            <div className="flex items-center gap-2 mb-6 mt-12 pb-2 border-b-2 border-orange-200">
+                <Icon className="w-6 h-6 text-orange-500" />
+                <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
+            </div>
+        );
+
+        const ChimeWorld = () => {
+            const introData = [
+                {
+                    desc: "いちばん機器なじみのあるチャイムかもしれない夕方の町に響く夕焼け小焼けからスタート。",
+                    title: "茨城県牛久市 17時「夕焼け小焼け」",
+                    url: "https://www.youtube.com/watch?v=XaoByAHR0EM"
+                },
+                {
+                    desc: "館山市ではX JAPANのリーダーYOSHIKIさん作曲の「Forever Love」が夕方のチャイムとして流れています。",
+                    title: "千葉県館山市 17時（金～日・祝日・11/20）「Forever Love」",
+                    url: "https://www.youtube.com/watch?v=mQB7j-6Rt7s"
+                },
+                {
+                    desc: "朝の連続テレビ小説「あまちゃん」の舞台になった岩手県久慈市では朝７時に「あまちゃんのテーマ」が流れています。",
+                    title: "岩手県久慈市 7時 「あまちゃんのテーマ」",
+                    url: "https://www.youtube.com/watch?v=nNYMhGLSajI"
+                },
+                {
+                    desc: "『新世紀エヴァンゲリオン』のオープニングテーマ「残酷な天使のテーゼ」が夕方のチャイムとして流れます、作曲された佐藤 英敏さんは南三陸町出身です。",
+                    title: "宮城県本吉郡南三陸町 6時 「残酷な天使のテーゼ」",
+                    url: "https://www.youtube.com/watch?v=IzkjSlu95Ug"
+                },
+                {
+                    desc: "大都会の真ん中東京都千代田区でも夕焼け小焼けのチャイムが流れています",
+                    title: "東京都千代田区 17時「夕焼け小焼け」",
+                    url: "https://www.youtube.com/watch?v=TdyiwnSRI_A"
+                },
+                {
+                    desc: "クレヨンしんちゃんの町春日部では市歌が夕方のチャイムとして流れます。",
+                    title: "埼玉県春日部市17時30分「春日部市の歌（心の空）」",
+                    url: "https://www.youtube.com/watch?v=PpqyqSW6dDU"
+                },
+                {
+                    desc: "いかのおすし一人前とは少年を犯罪から守るキーワードとして奈良県警本部が作成しました。防災無線チャイムのテスト放送として流れています。",
+                    title: "奈良県奈良市 毎月第一月曜日17時 「ｱﾅｳﾝｽ＋いかのおすし一人前」",
+                    url: "https://youtu.be/gsKesLztQ9c?si=zQ1ZGvrS7slnQrwq"
+                },
+                {
+                    desc: "八王子市では子供の見守りテーマ曲として、登下校の時間に合わせて八王子市出身の松任谷由美さん作曲の「守ってあげたい」を放送しています。",
+                    title: "東京都八王子市14時「守ってあげたい」",
+                    url: "https://youtu.be/PZBnSOzvBvk?si=6i5xlYjqXo-RExRY"
+                },
+                {
+                    desc: "千葉市では朝のチャイム？として流れているのはカッコーの鳴き声！？全国でも千葉市だけの珍しいチャイムです。",
+                    title: "千葉県千葉市 7時 「かっこう」",
+                    url: "https://www.youtube.com/watch?v=Z9FgVBwsP6k"
+                },
+                {
+                    desc: "J-POPの名曲「若者のすべて」富士吉田市出身で2009年に急逝したフジファブリックの志村正彦さんにちなんで、誕生日である7月10日前後と、命日である12月24日前後に防災行政無線でフジファブリックの曲を夕方のチャイムとして放送しています。",
+                    title: "山梨県富士吉田市 18時 「若者のすべて」",
+                    url: "https://youtu.be/hilogWx7ZnA?si=yyjfdKsw821mAjvG"
+                },
+                {
+                    desc: "誰もが知っている特撮アニメ、ウルトラマンの曲が流れるのは福島県須賀川市。作者の円谷英二さんの主審地というだけではなく、ウルトラマンの故郷・M78星雲光の国と姉妹都市提携を結んでいるそうです。",
+                    title: "福島県須賀川市 7時 「ウルトラセブンの歌」",
+                    url: "https://youtu.be/d4CC9FcDGTs?si=EoqIpcEM3ZI4uG1"
+                }
+            ];
+
+            const fieldRecordingData = [
+                {
+                    desc: "",
+                    title: "群馬県沼田市白沢町 6時 「歓喜の歌」",
+                    url: "https://youtu.be/3HmdTC5wfCo?si=inAXPK025vJAuctP"
+                },
+                {
+                    desc: "",
+                    title: "群馬県桐生市新里地域 8時「牧場の朝」",
+                    url: "https://youtu.be/CUFIoC28Bj8?si=tsEb3OEq2c6Ijpae"
+                },
+                {
+                    desc: "",
+                    title: "群馬県利根郡片品村 12時「夏の思い出」",
+                    url: "https://youtu.be/Hilm4gcbq9Y?si=tRrLltrc6FovN2OA"
+                },
+                {
+                    desc: "",
+                    title: "群馬県沼田市白沢町 15時「ムーンリバー」",
+                    url: "https://youtu.be/dY3eFmT7kpo?si=Zt0e7XlNrE08x6yN"
+                },
+                {
+                    desc: "",
+                    title: "群馬県沼田市利根地区 18時 「家路」",
+                    url: "https://youtu.be/pf5sb4liaCg?si=yVronZtqxnIAtR2C"
+                },
+                {
+                    desc: "",
+                    title: "群馬県高崎市吉井町 21時「家路」",
+                    url: "https://youtu.be/eVikV5EKkZI?si=PolYfVWPYc-CWQwy"
+                }
+            ];
+
+            const equipmentData = [
+                {
+                    desc: "カーペンターズの名曲イエスタデイ、時報チャイム用の音源として編曲され様々な場所で流れています。今回は一例として葛西海浜公園を紹介します。",
+                    title: "葛西海浜公園（西なぎさ）12時「イエスタデイ」",
+                    url: "https://youtu.be/xz7doIf8WQA?si=wZJRB6Op3sdkO1kp"
+                },
+                {
+                    desc: "次は皆さんご存じ蛍の光、こちらは様々な場所で流れていますが、大横川親水公園で閉園放送として流れている物をご紹介します。",
+                    title: "大横川親水公園閉園放送チャイム16時45分「TOA新音源蛍の光+アナウンス」",
+                    url: "https://youtu.be/7SXJJQXIE_k?si=Pk4bX0pMBJF-ldsq"
+                }
+            ];
+
+            return (
+                <div className="min-h-screen bg-orange-50 font-sans text-gray-800">
+                    {/* Header removed */}
+
+                    {/* Hero / Intro */}
+                    <div className="max-w-3xl mx-auto px-4 py-10">
+                        <div className="bg-white rounded-2xl p-8 shadow-sm border border-orange-100 mb-10">
+                            <p className="text-lg leading-relaxed mb-4">
+                                こんにちは、防災無線チャイムの世界です。<br />
+                                先日放送された、マツコの知らない世界はご覧になりましたか？
+                            </p>
+                            <p className="text-lg leading-relaxed text-gray-700">
+                                今回は番組内で登場したチャイムについて紹介していきます！<br/>
+                                もしかしたらあなたのきいたことのあるチャイムがみつかるかも！！
+                            </p>
+                        </div>
+
+                        {/* Section 1: Introduction */}
+                        <SectionHeader title="番組紹介チャイム" icon={Music} />
+                        <div>
+                            {introData.map((item, index) => (
+                                <ChimeCard
+                                    key={index}
+                                    description={item.desc}
+                                    locationTitle={item.title}
+                                    url={item.url}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Section 2: On-site Recording */}
+                        <SectionHeader title="実際の収録現場に密着" icon={Radio} />
+                        <p className="mb-6 text-gray-700 bg-orange-100/50 p-4 rounded-lg inline-block">
+                            そしてここからは実際の収録現場に密着していただきました！<br/>
+                            実際に収録したチャイムをお聞きください！
+                        </p>
+                        <div>
+                            {fieldRecordingData.map((item, index) => (
+                                <ChimeCard
+                                    key={index}
+                                    description={item.desc}
+                                    locationTitle={item.title}
+                                    url={item.url}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Section 3: Equipment */}
+                        <SectionHeader title="機器の紹介" icon={Info} />
+                        <div>
+                            {equipmentData.map((item, index) => (
+                                <ChimeCard
+                                    key={index}
+                                    description={item.desc}
+                                    locationTitle={item.title}
+                                    url={item.url}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Footer / Outro */}
+                        <div className="mt-16 bg-white rounded-2xl shadow-sm p-8 border-t-4 border-orange-500">
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                <Heart className="w-5 h-5 text-red-500" />
+                                さいごに
+                            </h3>
+                            <p className="leading-relaxed text-gray-700 mb-6">
+                                みなさんのきいたことのあるチャイム、気になったチャイムは見つかりましたか？<br />
+                                ここには紹介していないチャイムもまだまだたくさんあります。<br/><br/>
+                                防災無線チャイムの世界では、全国各地のチャイムの放送時間をまとめ、都道府県ごとに掲載しています。
+                                「気にしたことなかったけど、自分の地域はどんなチャイムが鳴っているんだろう？」
+                                「近くに珍しいチャイムとかあるのかな？」など気になったことがあればぜひご覧ください。
+                            </p>
+                            
+                            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                                <h4 className="font-bold mb-3 flex items-center gap-2">
+                                    <Mail className="w-5 h-5 text-gray-500" />
+                                    情報募集中
+                                </h4>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    また防災無線チャイムの世界では皆様からのチャイムの情報を募集しています。
+                                    掲載している情報が古く、今は別の曲が鳴っている、時間が変更された、などそんなことでも構いません。
+                                </p>
+                                <a 
+                                    href="https://docs.google.com/forms/d/e/1FAIpQLSesi3ibgw1GxX06VAIUk23PMSLVAsDOWm0ef_6bfAQZbJuN-Q/viewform"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-block text-center w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md"
+                                >
+                                    お問い合わせフォームへ
+                                </a>
+                            </div>
+                            
+                            <p className="text-center text-gray-400 text-sm mt-8">
+                                最後まで読んでいただきありがとうございました。
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <footer className="bg-gray-800 text-gray-300 py-6 mt-12 text-center text-sm">
+                        <p>&copy; 2024 防災無線チャイムの世界</p>
+                    </footer>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ChimeWorld />);
+    </script>
+</body>
+</html>
